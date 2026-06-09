@@ -1,8 +1,9 @@
 const mineflayer = require('mineflayer');
 
 // --- CONFIGURATION ---
-const SERVER_IP = '51.79.228.227:14014'; // Change to your IP
-const SERVER_PORT = 25565;            // Default Minecraft port
+// --- CONFIGURATION ---
+const SERVER_IP = '51.79.228.227';    // Only the numbers before the colon
+const SERVER_PORT = 14014;            // Only the numbers after the 
 const BOT_USERNAME = 'Lullu_modhu';      // Bot's ingame name
 
 function createBot() {
