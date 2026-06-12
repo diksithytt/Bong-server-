@@ -3,114 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BONG Bot Command Center</title>
+    <title>Mineflayer Live Dashboard</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { 
-            background-color: #0f172a; 
-            color: #22c55e; 
-            font-family: 'Courier New', Courier, monospace; 
-            padding: 20px; 
-            margin: 0;
-        }
-        h1 { 
-            border-bottom: 2px solid #1e293b; 
-            padding-bottom: 10px; 
-            margin-top: 0;
-            color: #f8fafc;
-        }
-        #chat-container {
-            display: flex;
-            flex-direction: column;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        #chat-box { 
-            background: #020617; 
-            height: 500px; 
-            overflow-y: auto; 
-            padding: 15px; 
-            border: 1px solid #334155; 
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-        .msg { margin-bottom: 5px; line-height: 1.4; word-wrap: break-word; }
-        .sys-msg { color: #eab308; } /* Yellow for system alerts */
-        .mc-msg { color: #f8fafc; }  /* White for standard Minecraft chat */
-        
-        #chat-form {
-            display: flex;
-            gap: 10px;
-        }
-        #chat-input { 
-            flex-grow: 1; 
-            padding: 12px; 
-            background: #1e293b; 
-            color: #f8fafc; 
-            border: 1px solid #475569; 
-            border-radius: 5px;
-            font-family: inherit;
-        }
-        #chat-input:focus { outline: none; border-color: #3b82f6; }
-        
-        button { 
-            padding: 12px 25px; 
-            background: #22c55e; 
-            color: #020617; 
-            border: none; 
-            border-radius: 5px;
-            cursor: pointer; 
-            font-weight: bold; 
-            font-family: inherit;
-            transition: background 0.2s;
-        }
-        button:hover { background: #16a34a; }
+        body { font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+        #chat-box { width: 100%; height: 400px; background: #000; overflow-y: auto; padding: 10px; box-sizing: border-box; border: 1px solid #444; margin-bottom: 10px;}
+        .sys { color: #f39c12; }
+        .mc { color: #fff; }
+        input[type="text"] { width: calc(100% - 100px); padding: 10px; background: #333; color: white; border: none; }
+        button { width: 80px; padding: 10px; background: #007acc; color: white; border: none; cursor: pointer; }
+        button:hover { background: #005999; }
     </style>
 </head>
 <body>
 
-    <div id="chat-container">
-        <h1>🖥️ BONG Command Center</h1>
-        
-        <div id="chat-box">
-            <div class="msg sys-msg">Waiting for connection to server...</div>
-        </div>
-        
-        <form id="chat-form">
-            <input type="text" id="chat-input" placeholder="Type a message to send to the Minecraft server..." autocomplete="off" required>
-            <button type="submit">SEND</button>
-        </form>
-    </div>
+    <h2>VENOM Live Dashboard</h2>
+    
+    <div id="chat-box"></div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <form id="chat-form">
+        <input type="text" id="chat-input" placeholder="Send a message to Minecraft..." autocomplete="off" required>
+        <button type="submit">Send</button>
+    </form>
+
     <script>
         const socket = io();
         const chatBox = document.getElementById('chat-box');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
+        const form = document.getElementById('chat-form');
+        const input = document.getElementById('chat-input');
 
-        function appendMessage(text, className) {
+        function addMessage(text, type) {
             const div = document.createElement('div');
-            div.className = `msg ${className}`;
+            div.className = type;
             div.textContent = text;
             chatBox.appendChild(div);
-            // Auto-scroll to the very bottom whenever a new message arrives
-            chatBox.scrollTop = chatBox.scrollHeight; 
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // Listen for System Updates
-        socket.on('sysLog', (msg) => appendMessage(msg, 'sys-msg'));
+        socket.on('sysLog', (msg) => { addMessage(msg, 'sys'); });
+        socket.on('mcChat', (msg) => { addMessage(msg, 'mc'); });
 
-        // Listen for Minecraft Chat
-        socket.on('mcChat', (msg) => appendMessage(msg, 'mc-msg'));
-
-        // Send your text input to the Minecraft server
-        chatForm.addEventListener('submit', (e) => {
+        form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const msg = chatInput.value;
-            socket.emit('sendChat', msg);
-            appendMessage(`[DASHBOARD]: ${msg}`, 'sys-msg');
-            chatInput.value = ''; // Clear the text box
+            socket.emit('sendChat', input.value);
+            input.value = '';
         });
     </script>
 </body>
