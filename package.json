@@ -1,5 +1,14 @@
 {
+  "name": "bong-dashboard-bot",
+  "version": "1.0.0",
+  "description": "24/7 Minecraft Dashboard and AFK Bot",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
-    "mineflayer": "^4.37.1"
+    "express": "^4.18.2",
+    "mineflayer": "^4.20.1",
+    "socket.io": "^4.7.2"
   }
 }
