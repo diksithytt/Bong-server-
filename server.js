@@ -31,12 +31,14 @@ function createBot() {
         hideErrors: true
     });
 
+    // When the bot joins the server
     bot.on('login', () => {
         const msg = `[+] SUCCESS! ${bot.username} connected to the server!`;
         console.log(msg);
-        io.emit('sysLog', msg);
+        io.emit('sysLog', msg); // Send message to the website
     });
 
+    // When the bot spawns in the world
     bot.on('spawn', () => {
         const msg = `[+] ${bot.username} spawned. Starting AFK twitch routine...`;
         console.log(msg);
@@ -53,6 +55,7 @@ function createBot() {
         }, 15000); 
     });
 
+    // Grab Minecraft chat and send it to the website
     bot.on('message', (message) => {
         const text = message.toString().trim();
         if (text) {
@@ -60,6 +63,7 @@ function createBot() {
         }
     });
 
+    // Auto-reconnect if kicked
     bot.on('end', (reason) => {
         const msg = `[-] Bot disconnected. Reason: ${reason}. Reconnecting in 10s...`;
         console.log(msg);
@@ -69,6 +73,7 @@ function createBot() {
         setTimeout(createBot, 10000);
     });
 
+    // Prevent crashes from random errors
     bot.on('error', (err) => {
         console.log(`[!] Error: ${err.message}`);
     });
@@ -78,6 +83,7 @@ function createBot() {
 io.on('connection', (socket) => {
     console.log('[SYSTEM] A user opened the web dashboard.');
     
+    // When you type a message on the website, send it to Minecraft
     socket.on('sendChat', (msg) => {
         if (bot && bot.entity) {
             bot.chat(msg);
@@ -88,6 +94,7 @@ io.on('connection', (socket) => {
 });
 
 // --- 4. START EVERYTHING ---
+// Render automatically provides a PORT. If running on your PC, it defaults to 3000.
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`===========================================`);
