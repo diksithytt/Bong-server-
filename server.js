@@ -4,24 +4,30 @@ const { Server } = require('socket.io');
 const mineflayer = require('mineflayer');
 const path = require('path');
 
-// --- 1. WEB SERVER SETUP ---
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Tell the server to show the 'public' folder when someone visits the website
 app.use(express.static(path.join(__dirname, 'public')));
 
-// --- 2. BOT CONFIGURATION ---
+// --- BOT CONFIGURATION ---
 const SERVER_IP = '51.79.228.227';    
 const SERVER_PORT = 14014;            
-const BOT_USERNAME = 'VENOM';  
+const BOT_USERNAME = 'BONG_AFK_Bot';  
 
 let bot;
 let afkInterval;
+let allowReconnect = true; // Tracks if the bot SHOULD auto-reconnect
 
 function createBot() {
+    // Prevent creating multiple bot instances at the same time
+    if (bot && bot.entity) {
+        io.emit('sysLog', '[!] Bot is already running.');
+        return;
+    }
+
     console.log(`[SYSTEM] Connecting to ${SERVER_IP}...`);
+    io.emit('sysLog', `[SYSTEM] Attempting to connect to ${SERVER_IP}...`);
     
     bot = mineflayer.createBot({
         host: SERVER_IP,
@@ -31,14 +37,12 @@ function createBot() {
         hideErrors: true
     });
 
-    // When the bot joins the server
     bot.on('login', () => {
         const msg = `[+] SUCCESS! ${bot.username} connected to the server!`;
         console.log(msg);
-        io.emit('sysLog', msg); // Send message to the website
+        io.emit('sysLog', msg);
     });
 
-    // When the bot spawns in the world
     bot.on('spawn', () => {
         const msg = `[+] ${bot.username} spawned. Starting AFK twitch routine...`;
         console.log(msg);
@@ -46,7 +50,6 @@ function createBot() {
         
         if (afkInterval) clearInterval(afkInterval);
         
-        // Ghost AFK Routine: Swing arm and look around every 15 seconds
         afkInterval = setInterval(() => {
             if (!bot.entity) return;
             bot.swingArm('right');
@@ -55,35 +58,56 @@ function createBot() {
         }, 15000); 
     });
 
-    // Grab Minecraft chat and send it to the website
     bot.on('message', (message) => {
         const text = message.toString().trim();
-        if (text) {
-            io.emit('mcChat', text);
-        }
+        if (text) io.emit('mcChat', text);
     });
 
-    // Auto-reconnect if kicked
     bot.on('end', (reason) => {
-        const msg = `[-] Bot disconnected. Reason: ${reason}. Reconnecting in 10s...`;
+        const msg = `[-] Bot disconnected. Reason: ${reason}`;
         console.log(msg);
         io.emit('sysLog', msg);
         
         if (afkInterval) clearInterval(afkInterval);
-        setTimeout(createBot, 10000);
+        
+        // Only reconnect automatically if we didn't manually press Disconnect
+        if (allowReconnect) {
+            io.emit('sysLog', '[SYSTEM] Reconnecting automatically in 10s...');
+            setTimeout(createBot, 10000);
+        } else {
+            io.emit('sysLog', '[SYSTEM] Bot is resting. Press CONNECT to start again.');
+        }
     });
 
-    // Prevent crashes from random errors
-    bot.on('error', (err) => {
-        console.log(`[!] Error: ${err.message}`);
-    });
+    bot.on('error', (err) => console.log(`[!] Error: ${err.message}`));
 }
 
-// --- 3. LIVE CHAT SYSTEM ---
+// --- LIVE INTERACTION LINK ---
 io.on('connection', (socket) => {
     console.log('[SYSTEM] A user opened the web dashboard.');
     
-    // When you type a message on the website, send it to Minecraft
+    // Listen for CONNECT button
+    socket.on('manualConnect', () => {
+        allowReconnect = true;
+        if (!bot || !bot.entity) {
+            createBot();
+        } else {
+            socket.emit('sysLog', '[!] Bot is already online.');
+        }
+    });
+
+    // Listen for DISCONNECT button
+    socket.on('manualDisconnect', () => {
+        allowReconnect = false; // Turn off auto-reconnect loop
+        if (bot) {
+            bot.end('Manual Disconnect Requested via Dashboard');
+            bot = null;
+        } else {
+            socket.emit('sysLog', '[!] Bot is already offline.');
+        }
+    });
+
+    // Send chat message
     socket.on('sendChat', (msg) => {
         if (bot && bot.entity) {
             bot.chat(msg);
@@ -93,12 +117,8 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- 4. START EVERYTHING ---
-// Render automatically provides a PORT. If running on your PC, it defaults to 3000.
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log(`===========================================`);
     console.log(`[SYSTEM] Web Dashboard running on port ${PORT}`);
-    console.log(`===========================================`);
-    createBot();
+    createBot(); // Automatically logs in on system startup
 });
