@@ -12,7 +12,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // --- BOT CONFIGURATION ---
 const SERVER_IP = '51.79.228.227';    
-const SERVER_PORT = 14014;            
+const SERVER_PORT = 25565;            
 const BOT_USERNAME = 'BONG_AFK_Bot';  
 
 let bot;
