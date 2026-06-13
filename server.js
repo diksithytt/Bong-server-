@@ -79,7 +79,11 @@ function createBot() {
         }
     });
 
-    bot.on('error', (err) => console.log(`[!] Error: ${err.message}`));
+   bot.on('error', (err) => {
+        const msg = `[!] Error: ${err.message}`;
+        console.log(msg);
+        io.emit('sysLog', msg); 
+    });
 }
 
 // --- LIVE INTERACTION LINK ---
