@@ -33,7 +33,7 @@ function createBot() {
         host: SERVER_IP,
         port: SERVER_PORT,
         username: BOT_USERNAME,
-        version: '1.19.4',
+        version: '1.21.11',
         hideErrors: true
     });
 
