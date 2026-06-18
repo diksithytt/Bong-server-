@@ -1,128 +1,90 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
 const mineflayer = require('mineflayer');
-const path = require('path');
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-// --- BOT CONFIGURATION ---
-const SERVER_IP = '15.235.144.117';    
-const SERVER_PORT = 12463;            
-const BOT_USERNAME = 'The_Bot';  
-
-let bot;
-let afkInterval;
-let allowReconnect = true; // Tracks if the bot SHOULD auto-reconnect
-
-function createBot() {
-    // Prevent creating multiple bot instances at the same time
-    if (bot && bot.entity) {
-        io.emit('sysLog', '[!] Bot is already running.');
-        return;
+class BotWrapper {
+    constructor(username, host, port, password) {
+        this.username = The_Bot;
+        this.host = 15.235.144.117;
+        this.port = 12463;
+        this.password = Please;
+        this.bot = null;
+        this.reconnectAttempts = 0;
     }
 
-    console.log(`[SYSTEM] Connecting to ${SERVER_IP}...`);
-    io.emit('sysLog', `[SYSTEM] Attempting to connect to ${SERVER_IP}...`);
-    
-    bot = mineflayer.createBot({
-        host: SERVER_IP,
-        port: SERVER_PORT,
-        username: BOT_USERNAME,
-        version: false,
-        hideErrors: true
-    });
+    start() {
+        console.log(`[${this.username}] Initializing connection...`);
+        this.bot = mineflayer.createBot({
+            host: this.host,
+            port: this.port,
+            username: this.username,
+            auth: 'offline',
+            // Set version to false to auto-detect protocol; 
+            // if you get version errors, hardcode it (e.g., '1.21.1')
+            version: false, 
+            checkTimeoutInterval: 60000
+        });
 
-    bot.on('login', () => {
-        const msg = `[+] SUCCESS! ${bot.username} connected to the server!`;
-        console.log(msg);
-        io.emit('sysLog', msg);
-    });
+        this.initEvents();
+    }
 
-    bot.on('spawn', () => {
-        const msg = `[+] ${bot.username} spawned. Starting AFK twitch routine...`;
-        console.log(msg);
-        io.emit('sysLog', msg);
-        
-        if (afkInterval) clearInterval(afkInterval);
-        
-        afkInterval = setInterval(() => {
-            if (!bot.entity) return;
-            bot.swingArm('right');
-            const yawShift = bot.entity.yaw + (Math.random() > 0.5 ? 0.2 : -0.2);
-            bot.look(yawShift, bot.entity.pitch, true).catch(() => {});
-        }, 15000); 
-    });
+    initEvents() {
+        this.bot.on('spawn', () => {
+            console.log(`[${this.username}] Spawn detected.`);
+            // Aggressive attempt 1: Login immediately on spawn
+            this.sendLogin();
+            this.reconnectAttempts = 0; // Reset counter
+        });
 
-    bot.on('message', (message) => {
-        const text = message.toString().trim();
-        if (text) io.emit('mcChat', text);
-    });
+        this.bot.on('message', (jsonMsg) => {
+            const message = jsonMsg.toString();
+            // Aggressive attempt 2: Regex login detection (more precise than .includes)
+            if (/log(in|ged)|pass(word)?|register/i.test(message)) {
+                console.log(`[${this.username}] Auth prompt detected: "${message}"`);
+                this.sendLogin();
+            }
+        });
 
-    bot.on('end', (reason) => {
-        const msg = `[-] Bot disconnected. Reason: ${reason}`;
-        console.log(msg);
-        io.emit('sysLog', msg);
-        
-        if (afkInterval) clearInterval(afkInterval);
-        
-        // Only reconnect automatically if we didn't manually press Disconnect
-        if (allowReconnect) {
-            io.emit('sysLog', '[SYSTEM] Reconnecting automatically in 10s...');
-            setTimeout(createBot, 10000);
-        } else {
-            io.emit('sysLog', '[SYSTEM] Bot is resting. Press CONNECT to start again.');
+        this.bot.on('kicked', (reason) => {
+            console.log(`[${this.username}] Kicked: ${reason}`);
+            this.cleanupAndReconnect();
+        });
+
+        this.bot.on('error', (err) => {
+            console.error(`[${this.username}] Error: ${err.message}`);
+            this.cleanupAndReconnect();
+        });
+
+        this.bot.on('end', () => {
+            console.log(`[${this.username}] Connection ended.`);
+            this.cleanupAndReconnect();
+        });
+    }
+
+    sendLogin() {
+        // Multi-stage login to ensure it gets through
+        setTimeout(() => this.bot.chat(`/login ${this.password}`), 500);
+        setTimeout(() => this.bot.chat(`/register ${this.password} ${this.password}`), 1000);
+    }
+
+    cleanupAndReconnect() {
+        // Safely kill the old instance
+        if (this.bot) {
+            try {
+                this.bot.quit();
+                this.bot.end();
+            } catch (e) {
+                console.log(`[${this.username}] Clean-up warning: ${e.message}`);
+            }
         }
-    });
 
-   bot.on('error', (err) => {
-        const msg = `[!] Error: ${err.message}`;
-        console.log(msg);
-        io.emit('sysLog', msg); 
-    });
+        // Incremental Backoff: Wait 5s, then 10s, max 60s
+        this.reconnectAttempts++;
+        const delay = Math.min(this.reconnectAttempts * 5000, 60000);
+        
+        console.log(`[${this.username}] Reconnecting in ${delay / 1000}s...`);
+        setTimeout(() => this.start(), delay);
+    }
 }
 
-// --- LIVE INTERACTION LINK ---
-io.on('connection', (socket) => {
-    console.log('[SYSTEM] A user opened the web dashboard.');
-    
-    // Listen for CONNECT button
-    socket.on('manualConnect', () => {
-        allowReconnect = true;
-        if (!bot || !bot.entity) {
-            createBot();
-        } else {
-            socket.emit('sysLog', '[!] Bot is already online.');
-        }
-    });
-
-    // Listen for DISCONNECT button
-    socket.on('manualDisconnect', () => {
-        allowReconnect = false; // Turn off auto-reconnect loop
-        if (bot) {
-            bot.end('Manual Disconnect Requested via Dashboard');
-            bot = null;
-        } else {
-            socket.emit('sysLog', '[!] Bot is already offline.');
-        }
-    });
-
-    // Send chat message
-    socket.on('sendChat', (msg) => {
-        if (bot && bot.entity) {
-            bot.chat(msg);
-        } else {
-            socket.emit('sysLog', '[!] Cannot send message. Bot is offline.');
-        }
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`[SYSTEM] Web Dashboard running on port ${PORT}`);
-    createBot(); // Automatically logs in on system startup
-});
+// Start the bot
+const myBot = new BotWrapper('YourBotName', 'YOUR_SERVER_IP', 25565, 'Please');
+myBot.start();
