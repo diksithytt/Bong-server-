@@ -2,24 +2,23 @@ const mineflayer = require('mineflayer');
 
 class BotWrapper {
     constructor(username, host, port, password) {
-        this.username = "The_Bot";
-        this.host = "15.235.144.117";
-        this.port = 12463;
-        this.password = "Please";
+        this.username = "The_Bot"; // Quotes added
+        this.host = "15.235.144.117"; // Quotes added
+        this.port = 25565;
+        this.password = "Please"; // Quotes added
         this.bot = null;
         this.reconnectAttempts = 0;
+        this.isLoggedIn = false; // Prevents spamming login
     }
 
     start() {
+        this.isLoggedIn = false;
         console.log(`[${this.username}] Initializing connection...`);
         this.bot = mineflayer.createBot({
             host: this.host,
             port: this.port,
             username: this.username,
             auth: 'offline',
-            // Set version to false to auto-detect protocol; 
-            // if you get version errors, hardcode it (e.g., '1.21.1')
-            version: false, 
             checkTimeoutInterval: 60000
         });
 
@@ -29,22 +28,22 @@ class BotWrapper {
     initEvents() {
         this.bot.on('spawn', () => {
             console.log(`[${this.username}] Spawn detected.`);
-            // Aggressive attempt 1: Login immediately on spawn
             this.sendLogin();
-            this.reconnectAttempts = 0; // Reset counter
+            this.reconnectAttempts = 0;
         });
 
         this.bot.on('message', (jsonMsg) => {
+            if (this.isLoggedIn) return; // Ignore messages if we are already in
+
             const message = jsonMsg.toString();
-            // Aggressive attempt 2: Regex login detection (more precise than .includes)
             if (/log(in|ged)|pass(word)?|register/i.test(message)) {
-                console.log(`[${this.username}] Auth prompt detected: "${message}"`);
+                console.log(`[${this.username}] Auth prompt detected.`);
                 this.sendLogin();
             }
         });
 
-        this.bot.on('kicked', (reason) => {
-            console.log(`[${this.username}] Kicked: ${reason}`);
+        this.bot.on('end', () => {
+            this.isLoggedIn = false;
             this.cleanupAndReconnect();
         });
 
@@ -52,31 +51,26 @@ class BotWrapper {
             console.error(`[${this.username}] Error: ${err.message}`);
             this.cleanupAndReconnect();
         });
-
-        this.bot.on('end', () => {
-            console.log(`[${this.username}] Connection ended.`);
-            this.cleanupAndReconnect();
-        });
     }
 
     sendLogin() {
-        // Multi-stage login to ensure it gets through
-        setTimeout(() => this.bot.chat(`/login ${this.password}`), 500);
-        setTimeout(() => this.bot.chat(`/register ${this.password} ${this.password}`), 1000);
+        // SAFETY GUARD: If bot is null or not connected, abort
+        if (!this.bot || this.isLoggedIn) return;
+
+        console.log(`[${this.username}] Sending credentials...`);
+        this.bot.chat(`/login ${this.password}`);
+        this.isLoggedIn = true; // Mark as logged in to stop chat spam
     }
 
     cleanupAndReconnect() {
-        // Safely kill the old instance
+        this.isLoggedIn = false;
+        
+        // Safely kill instance
         if (this.bot) {
-            try {
-                this.bot.quit();
-                this.bot.end();
-            } catch (e) {
-                console.log(`[${this.username}] Clean-up warning: ${e.message}`);
-            }
+            try { this.bot.end(); } catch (e) {}
+            this.bot = null;
         }
 
-        // Incremental Backoff: Wait 5s, then 10s, max 60s
         this.reconnectAttempts++;
         const delay = Math.min(this.reconnectAttempts * 5000, 60000);
         
@@ -86,5 +80,5 @@ class BotWrapper {
 }
 
 // Start the bot
-const myBot = new BotWrapper('YourBotName', 'YOUR_SERVER_IP', 25565, 'Please');
+const myBot = new BotWrapper();
 myBot.start();
