@@ -4,7 +4,7 @@ class BotWrapper {
     constructor(username, host, port, password) {
         this.username = "The_Bot"; // Quotes added
         this.host = "15.235.144.117"; // Quotes added
-        this.port = 25565;
+        this.port = 12463;
         this.password = "Please"; // Quotes added
         this.bot = null;
         this.reconnectAttempts = 0;
