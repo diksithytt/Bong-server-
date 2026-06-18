@@ -3,9 +3,9 @@ const mineflayer = require('mineflayer');
 class BotWrapper {
     constructor(username, host, port, password) {
         this.username = The_Bot;
-        this.host = 15.235.144.117;
+        this.host = "15.235.144.117";
         this.port = 12463;
-        this.password = Please;
+        this.password = "Please";
         this.bot = null;
         this.reconnectAttempts = 0;
     }
