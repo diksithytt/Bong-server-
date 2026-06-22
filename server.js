@@ -16,7 +16,7 @@ class BotWrapper {
             port: this.port,
             username: this.username,
             auth: 'offline',
-            version: false, // Auto-detects the latest/correct version
+            version: 26.1.2, // Auto-detects the latest/correct version
             checkTimeoutInterval: 60000
         });
 
