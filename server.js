@@ -1,13 +1,13 @@
 const http = require('http');
 const mineflayer = require('mineflayer');
 
-// 1. Keep Render Web Service alive by binding to process.env.PORT
-const PORT = process.env.PORT || 3000;
+// 1. Keep Render Web Service alive on process.env.PORT
+const PORT = process.env.PORT || 10000;
 http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
     res.end('Bot is running!\n');
 }).listen(PORT, '0.0.0.0', () => {
-    console.log(`[HTTP] Web server listening on port ${PORT} for Render health checks.`);
+    console.log(`[HTTP] Web server listening on port ${PORT}`);
 });
 
 // 2. Mineflayer Bot Wrapper
@@ -42,16 +42,20 @@ class BotWrapper {
                 auth: 'offline',
                 version: this.version,
                 checkTimeoutInterval: 60000,
-                physicsEnabled: false // Fixes "invalid_player_movement" kick!
+                physicsEnabled: false
             });
 
             this.bot = bot;
 
+            // Fix for "multiplayer.disconnect.invalid_player_movement" 1.5s after spawn:
+            // Only allow a single position response right after the server sends a teleport/position packet.
+            // Block Mineflayer's 1-second idle position loop that gets the bot kicked.
+            this.installMovementPacketFilter(bot);
+
             bot.once('spawn', () => {
-                // Keep physics disabled so chunk loading / anti-cheat doesn't kick the bot
                 bot.physicsEnabled = false;
                 this.reconnectAttempts = 0;
-                console.log(`[${this.username}] Joined and spawned successfully!`);
+                console.log(`[${this.username}] Joined and spawned! Standing still safely.`);
                 this.startAntiAfk();
             });
 
@@ -78,20 +82,44 @@ class BotWrapper {
         }
     }
 
+    installMovementPacketFilter(bot) {
+        let allowNextPositionPacket = false;
+        const originalWrite = bot._client.write.bind(bot._client);
+
+        // Whenever the server teleports/spawns the bot, allow 1 position confirmation packet
+        bot._client.on('position', () => {
+            allowNextPositionPacket = true;
+        });
+
+        bot._client.write = (name, params) => {
+            if (name === 'position' || name === 'position_look' || name === 'look' || name === 'flying') {
+                if (!allowNextPositionPacket) {
+                    // Drop Mineflayer's idle position packets so the server never kicks us
+                    return;
+                }
+                allowNextPositionPacket = false;
+                originalWrite(name, params);
+
+                // Send tick_end if the protocol supports it (1.21.2+ / 26.x fix)
+                try {
+                    if (bot._client.serializer?.proto?.play?.toServer?.types?.packet_tick_end) {
+                        originalWrite('tick_end', {});
+                    }
+                } catch (_) {}
+                return;
+            }
+            return originalWrite(name, params);
+        };
+    }
+
     startAntiAfk() {
         if (this.antiAfkTimer) clearInterval(this.antiAfkTimer);
         this.antiAfkTimer = setInterval(() => {
             if (!this.bot || !this.bot.entity) return;
             try {
-                // Swing arm & toggle sneak instead of moving/jumping to avoid movement kicks
+                // Arm swing does NOT send movement packets, so it won't trigger invalid_player_movement
                 this.bot.swingArm();
-                this.bot.setControlState('sneak', true);
-                setTimeout(() => {
-                    if (this.bot) this.bot.setControlState('sneak', false);
-                }, 500);
-            } catch (e) {
-                // Ignore packet errors
-            }
+            } catch (_) {}
         }, 30000);
     }
 
@@ -104,9 +132,7 @@ class BotWrapper {
         try {
             this.bot.removeAllListeners();
             this.bot.quit();
-        } catch (e) {
-            // Ignore cleanup errors
-        }
+        } catch (_) {}
         this.bot = null;
     }
 
@@ -115,9 +141,7 @@ class BotWrapper {
 
         this.reconnectScheduled = true;
         this.reconnectAttempts += 1;
-
-        // Wait at least 15 seconds between retries so the server doesn't throttle us
-        const delay = Math.min(Math.max(this.reconnectAttempts * 10000, 15000), 60000);
+        const delay = Math.min(Math.max(this.reconnectAttempts * 15000, 15000), 60000);
         console.log(`[${this.username}] Reconnecting in ${delay / 1000}s...`);
 
         this.reconnectTimer = setTimeout(() => {
