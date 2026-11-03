@@ -6,19 +6,21 @@ class AFKBot {
     this.port = config.port || 34697;
     this.username = config.username || 'BongAFK';
     this.auth = config.auth || 'offline';
-    this.version = config.version ?? false; // false lets Mineflayer auto-detect
+    this.version = config.version ?? false;
 
     this.bot = null;
     this.afkInterval = null;
     this.reconnectTimeout = null;
     this.reconnectAttempts = 0;
     this.isReconnecting = false;
+    this.connected = false;
 
-    this.initBot();
+    this.start();
   }
 
-  initBot() {
+  start() {
     this.isReconnecting = false;
+    this.connected = false;
     console.log(`[${this.username}] Initializing connection to ${this.host}:${this.port}...`);
 
     this.bot = mineflayer.createBot({
@@ -27,7 +29,8 @@ class AFKBot {
       username: this.username,
       auth: this.auth,
       version: this.version,
-      checkTimeoutInterval: 60000
+      checkTimeoutInterval: 60000,
+      disableChatSigning: true
     });
 
     this.initEvents();
@@ -35,6 +38,7 @@ class AFKBot {
 
   initEvents() {
     this.bot.once('spawn', () => {
+      this.connected = true;
       console.log(`[${this.username}] Spawn detected. Bot active.`);
       this.reconnectAttempts = 0;
       this.startAfkRoutine();
@@ -42,14 +46,17 @@ class AFKBot {
 
     this.bot.on('kicked', (reason) => {
       console.warn(`[${this.username}] Kicked: ${reason}`);
+      this.connected = false;
     });
 
     this.bot.on('end', () => {
+      this.connected = false;
       console.log(`[${this.username}] Connection terminated.`);
       this.cleanupAndReconnect();
     });
 
     this.bot.on('error', (err) => {
+      this.connected = false;
       console.error(`[${this.username}] Error: ${err.message}`);
       this.cleanupAndReconnect();
     });
@@ -101,11 +108,11 @@ class AFKBot {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(5000 + (this.reconnectAttempts * 2000), 30000);
+    const delay = Math.min(5000 + this.reconnectAttempts * 2000, 30000);
     console.log(`[${this.username}] Attempting reconnection #${this.reconnectAttempts} in ${delay / 1000}s...`);
 
     this.reconnectTimeout = setTimeout(() => {
-      this.initBot();
+      this.start();
     }, delay);
   }
 }
@@ -117,3 +124,5 @@ const botInstance = new AFKBot({
   auth: 'offline',
   version: false
 });
+
+module.exports = botInstance;
