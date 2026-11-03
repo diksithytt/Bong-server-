@@ -2,8 +2,8 @@ const mineflayer = require('mineflayer');
 
 class AFKBot {
   constructor(config = {}) {
-    this.host = config.host || 'creativerseSMP.aternos.me';
-    this.port = config.port || 34697;
+    this.host = config.host || 'jadesmp.mcsh.gg';
+    this.port = config.port || 25565;
     this.username = config.username || 'BongAFK';
     this.auth = config.auth || 'offline';
     this.version = config.version ?? false;
@@ -118,8 +118,8 @@ class AFKBot {
 }
 
 const botInstance = new AFKBot({
-  host: 'creativerseSMP.aternos.me',
-  port: 34697,
+  host: 'jadesmp.mcsh.gg',
+  port: 25565,
   username: 'BongAFK',
   auth: 'offline',
   version: false
