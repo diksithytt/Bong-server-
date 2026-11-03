@@ -1,144 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Command Center</title>
-    <style>
-        body { 
-            background-color: #0f172a; 
-            color: #22c55e; 
-            font-family: 'Courier New', Courier, monospace; 
-            padding: 20px; 
-            margin: 0;
-        }
-        h1 { 
-            margin-top: 0;
-            color: #f8fafc;
-        }
-        #header-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 2px solid #1e293b; 
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            max-width: 800px;
-            margin: 0 auto 15px auto;
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-        }
-        #chat-container {
-            display: flex;
-            flex-direction: column;
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        #chat-box { 
-            background: #020617; 
-            height: 500px; 
-            overflow-y: auto; 
-            padding: 15px; 
-            border: 1px solid #334155; 
-            border-radius: 8px;
-            margin-bottom: 15px;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
-        }
-        .msg { margin-bottom: 5px; line-height: 1.4; word-wrap: break-word; }
-        .sys-msg { color: #eab308; } 
-        .mc-msg { color: #f8fafc; }  
-        
-        #chat-form {
-            display: flex;
-            gap: 10px;
-        }
-        #chat-input { 
-            flex-grow: 1; 
-            padding: 12px; 
-            background: #1e293b; 
-            color: #f8fafc; 
-            border: 1px solid #475569; 
-            border-radius: 5px;
-            font-family: inherit;
-        }
-        #chat-input:focus { outline: none; border-color: #3b82f6; }
-        
-        button { 
-            padding: 12px 25px; 
-            color: #020617; 
-            border: none; 
-            border-radius: 5px;
-            cursor: pointer; 
-            font-weight: bold; 
-            font-family: inherit;
-            transition: opacity 0.2s;
-        }
-        button:hover { opacity: 0.9; }
-        .btn-connect { background: #22c55e; }
-        .btn-disconnect { background: #ef4444; color: #ffffff; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BONG Command Center</title>
+  <style>
+    :root {
+      --bg: #07111d;
+      --bg-2: #0d1b2a;
+      --panel: rgba(15, 23, 42, 0.9);
+      --panel-alt: rgba(18, 32, 48, 0.92);
+      --line: rgba(148, 163, 184, 0.25);
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --green: #22c55e;
+      --green-soft: rgba(34, 197, 94, 0.15);
+      --red: #ef4444;
+      --red-soft: rgba(239, 68, 68, 0.15);
+      --amber: #fbbf24;
+      --blue: #38bdf8;
+      --shadow: 0 18px 35px rgba(2, 6, 23, 0.55);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 30%),
+        linear-gradient(135deg, var(--bg), var(--bg-2));
+      color: var(--text);
+    }
+
+    body {
+      padding: 30px 18px 60px;
+    }
+
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(10, 18, 30, 0.7);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      width: 48px;
+      height: 48px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--green), var(--blue));
+      color: #03131d;
+      font-size: 22px;
+      font-weight: 800;
+      box-shadow: 0 12px 28px rgba(34, 197, 94, 0.35);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.5rem, 2vw, 2.5rem);
+      letter-spacing: -0.04em;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.15);
+      border: 1px solid rgba(45, 212, 191, 0.35);
+      color: #b5fff3;
+      font-size: 0.84rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(34, 197, 94, 0.9);
+      animation: pulse 1.8s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.25); opacity: 0.7; }
+    }
+
+    .layout {
+      margin-top: 24px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: linear-gradient(180deg, var(--panel), var(--panel-alt));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      padding: 20px;
+    }
+
+    .metric {
+      padding: 18px 16px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .metric-label {
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    .metric-value {
+      font-size: clamp(1.4rem, 2vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.05em;
+    }
+
+    .metric-value.green { color: var(--green); }
+    .metric-value.blue { color: var(--blue); }
+    .metric-value.amber { color: var(--amber); }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 20px;
+      border-top: 1px solid var(--line);
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 18px;
+      color: white;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+      box-shadow: 0 10px 18px rgba(2, 6, 23, 0.3);
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      opacity: 0.98;
+    }
+
+    .connect-btn {
+      background: linear-gradient(135deg, #1cc56b, #0ea5e9);
+    }
+
+    .disconnect-btn {
+      background: linear-gradient(135deg, #ef4444, #f97316);
+    }
+
+    .clear-btn {
+      background: linear-gradient(135deg, #475569, #334155);
+    }
+
+    .log-panel {
+      display: flex;
+      flex-direction: column;
+      min-height: 460px;
+    }
+
+    #chat-box {
+      flex: 1;
+      background: rgba(2, 6, 23, 0.7);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      margin: 20px;
+      padding: 16px;
+      overflow-y: auto;
+      min-height: 330px;
+      max-height: 55vh;
+    }
+
+    .msg {
+      margin: 0 0 10px;
+      line-height: 1.5;
+      word-wrap: break-word;
+      font-size: 0.96rem;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+    }
+
+    .sys-msg {
+      background: rgba(251, 191, 36, 0.08);
+      border-color: rgba(251, 191, 36, 0.2);
+      color: #fcd34d;
+    }
+
+    .mc-msg {
+      background: rgba(59, 130, 246, 0.08);
+      border-color: rgba(59, 130, 246, 0.2);
+      color: #dbeafe;
+    }
+
+    .chat-form {
+      display: flex;
+      gap: 12px;
+      padding: 0 20px 20px;
+    }
+
+    .chat-form input {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    .chat-form input:focus {
+      border-color: rgba(56, 189, 248, 0.8);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.12);
+    }
+
+    .send-btn {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      min-width: 110px;
+    }
+
+    @media (max-width: 860px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .chat-form {
+        flex-direction: column;
+      }
+    }
+  </style>
 </head>
 <body>
-
-    <div id="chat-container">
-        <div id="header-container">
-            <h1>🖥️ BONG Command Center</h1>
-            <div class="controls">
-                <button class="btn-connect" id="connect-btn">CONNECT</button>
-                <button class="btn-disconnect" id="disconnect-btn">DISCONNECT</button>
-            </div>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <h1>BONG Command Center</h1>
         </div>
-        
+      </div>
+
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="status-label">System Online</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>Bot Overview</h2>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metric-label">Connection</div>
+            <div id="conn-status" class="metric-value green">READY</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Server</div>
+            <div id="server-status" class="metric-value blue">LIVE</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Reconnects</div>
+            <div id="reconnect-count" class="metric-value amber">0</div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="connect-btn" id="connect-btn">Connect Bot</button>
+          <button class="disconnect-btn" id="disconnect-btn">Disconnect</button>
+          <button class="clear-btn" id="clear-btn">Clear Log</button>
+        </div>
+      </section>
+
+      <section class="panel log-panel">
+        <div class="panel-header">
+          <h2>Live Console</h2>
+        </div>
+
         <div id="chat-box">
-            <div class="msg sys-msg">Waiting for connection to dashboard...</div>
+          <div class="msg sys-msg">Dashboard ready. Waiting for bot status...</div>
         </div>
-        
-        <form id="chat-form">
-            <input type="text" id="chat-input" placeholder="Type a message to send to the Minecraft server..." autocomplete="off" required>
-            <button type="submit" class="btn-connect">SEND</button>
+
+        <form class="chat-form" id="chat-form">
+          <input id="chat-input" type="text" placeholder="Type a message to send to the Minecraft server..." autocomplete="off" />
+          <button type="submit" class="send-btn">Send</button>
         </form>
-    </div>
+      </section>
+    </main>
+  </div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const chatBox = document.getElementById('chat-box');
-        const chatForm = document.getElementById('chat-form');
-        const chatInput = document.getElementById('chat-input');
-        const connectBtn = document.getElementById('connect-btn');
-        const disconnectBtn = document.getElementById('disconnect-btn');
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = window.io ? io() : null;
+    const chatBox = document.getElementById('chat-box');
+    const chatForm = document.getElementById('chat-form');
+    const chatInput = document.getElementById('chat-input');
+    const connectBtn = document.getElementById('connect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const clearBtn = document.getElementById('clear-btn');
+    const statusLabel = document.getElementById('status-label');
+    const connStatus = document.getElementById('conn-status');
+    const serverStatus = document.getElementById('server-status');
+    const reconnectCount = document.getElementById('reconnect-count');
 
-        function appendMessage(text, className) {
-            const div = document.createElement('div');
-            div.className = `msg ${className}`;
-            div.textContent = text;
-            chatBox.appendChild(div);
-            chatBox.scrollTop = chatBox.scrollHeight; 
+    function appendMessage(text, className) {
+      const div = document.createElement('div');
+      div.className = `msg ${className}`;
+      div.textContent = text;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function setStatus(online) {
+      if (online) {
+        statusLabel.textContent = 'System Online';
+        connStatus.textContent = 'ACTIVE';
+        connStatus.className = 'metric-value green';
+      } else {
+        statusLabel.textContent = 'Awaiting Connection';
+        connStatus.textContent = 'READY';
+        connStatus.className = 'metric-value green';
+      }
+    }
+
+    if (!socket) {
+      appendMessage('Socket.IO is unavailable. The dashboard is running without live socket events.', 'sys-msg');
+      setStatus(false);
+    } else {
+      socket.on('connect', () => {
+        appendMessage('Socket connected to dashboard backend.', 'sys-msg');
+        setStatus(true);
+      });
+
+      socket.on('disconnect', () => {
+        appendMessage('Socket disconnected from backend.', 'sys-msg');
+        setStatus(false);
+      });
+
+      socket.on('sysLog', (msg) => appendMessage(msg, 'sys-msg'));
+      socket.on('mcChat', (msg) => appendMessage(msg, 'mc-msg'));
+      socket.on('botStatus', (payload) => {
+        const online = !!payload?.online;
+        setStatus(online);
+        serverStatus.textContent = online ? 'LIVE' : 'OFFLINE';
+        serverStatus.className = online ? 'metric-value blue' : 'metric-value amber';
+        if (payload?.reconnects !== undefined) {
+          reconnectCount.textContent = payload.reconnects;
         }
+      });
+    }
 
-        // Button Click Event Handlers
-        connectBtn.addEventListener('click', () => {
-            socket.emit('manualConnect');
-        });
+    connectBtn.addEventListener('click', () => {
+      if (socket) socket.emit('manualConnect');
+      appendMessage('Manual connect requested.', 'sys-msg');
+    });
 
-        disconnectBtn.addEventListener('click', () => {
-            socket.emit('manualDisconnect');
-        });
+    disconnectBtn.addEventListener('click', () => {
+      if (socket) socket.emit('manualDisconnect');
+      appendMessage('Manual disconnect requested.', 'sys-msg');
+    });
 
-        // Listen for Events from Server
-        socket.on('sysLog', (msg) => appendMessage(msg, 'sys-msg'));
-        socket.on('mcChat', (msg) => appendMessage(msg, 'mc-msg'));
+    clearBtn.addEventListener('click', () => {
+      chatBox.innerHTML = '<div class="msg sys-msg">Console cleared.</div>';
+    });
 
-        // Handle sending text chats
-        chatForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const msg = chatInput.value;
-            socket.emit('sendChat', msg);
-            appendMessage(`[DASHBOARD]: ${msg}`, 'sys-msg');
-            chatInput.value = ''; 
-        });
-    </script>
+    chatForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      if (socket) socket.emit('sendChat', message);
+      appendMessage(`[DASHBOARD] ${message}`, 'sys-msg');
+      chatInput.value = '';
+    });
+  </script>
 </body>
 </html>
