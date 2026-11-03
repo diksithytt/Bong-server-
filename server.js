@@ -2,11 +2,16 @@ const mineflayer = require('mineflayer');
 
 class BotWrapper {
     constructor({
-        username = 'The_Bot_by_Unknown4000',
+        // Must be 16 characters or fewer (yours was 22)
+        username = 'Bot_Unknown4000',
         host = 'jadesmp.mcsh.gg',
         port = 25565,
         version = false
     } = {}) {
+        if (username.length > 16) {
+            throw new Error(`Username "${username}" exceeds Minecraft's 16-character limit.`);
+        }
+
         this.username = username;
         this.host = host;
         this.port = port;
@@ -23,7 +28,7 @@ class BotWrapper {
 
         console.log(`[${this.username}] Connecting to ${this.host}:${this.port}...`);
         try {
-            this.bot = mineflayer.createBot({
+            const bot = mineflayer.createBot({
                 host: this.host,
                 port: this.port,
                 username: this.username,
@@ -32,36 +37,51 @@ class BotWrapper {
                 checkTimeoutInterval: 60000
             });
 
-            this.bot.once('spawn', () => {
+            this.bot = bot;
+
+            bot.once('spawn', () => {
                 this.reconnectAttempts = 0;
                 console.log(`[${this.username}] Joined and spawned.`);
             });
 
-            this.bot.on('kicked', (reason) => {
-                console.warn(`[${this.username}] Kicked: ${reason}`);
+            bot.on('kicked', (reason) => {
+                const formattedReason = typeof reason === 'object' ? JSON.stringify(reason) : reason;
+                console.warn(`[${this.username}] Kicked: ${formattedReason}`);
             });
 
-            this.bot.on('end', (reason) => {
+            bot.on('end', (reason) => {
                 console.log(`[${this.username}] Disconnected: ${reason || 'connection ended'}`);
+                this.cleanupBot();
                 this.scheduleReconnect();
             });
 
-            this.bot.on('error', (err) => {
+            bot.on('error', (err) => {
                 console.error(`[${this.username}] Error: ${err.message}`);
+                this.cleanupBot();
                 this.scheduleReconnect();
             });
         } catch (err) {
-            this.bot = null;
+            this.cleanupBot();
             console.error(`[${this.username}] Could not start: ${err.message}`);
             this.scheduleReconnect();
         }
+    }
+
+    cleanupBot() {
+        if (!this.bot) return;
+        try {
+            this.bot.removeAllListeners();
+            this.bot.quit();
+        } catch (_) {
+            // Ignore errors while tearing down a broken socket
+        }
+        this.bot = null;
     }
 
     scheduleReconnect() {
         if (this.stopping || this.reconnectScheduled) return;
 
         this.reconnectScheduled = true;
-        this.bot = null;
         this.reconnectAttempts += 1;
         const delay = Math.min(this.reconnectAttempts * 5000, 60000);
         console.log(`[${this.username}] Reconnecting in ${delay / 1000}s...`);
@@ -78,8 +98,7 @@ class BotWrapper {
         if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
         this.reconnectTimer = null;
         this.reconnectScheduled = false;
-        if (this.bot) this.bot.quit();
-        this.bot = null;
+        this.cleanupBot();
     }
 }
 
