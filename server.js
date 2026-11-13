@@ -14,7 +14,7 @@ http.createServer((req, res) => {
 class BotWrapper {
     constructor({
         username = 'Bot_Unknown4000',
-        host = 'jadesmp.mcsh.gg',
+        host = 'tokiyo.cogweb.store',
         port = 25565,
         version = false
     } = {}) {
