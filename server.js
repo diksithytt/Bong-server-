@@ -47,9 +47,7 @@ class BotWrapper {
 
             this.bot = bot;
 
-            // Fix for "multiplayer.disconnect.invalid_player_movement" 1.5s after spawn:
-            // Only allow a single position response right after the server sends a teleport/position packet.
-            // Block Mineflayer's 1-second idle position loop that gets the bot kicked.
+            // Allow a position response after a server teleport/spawn, but drop idle movement packets.
             this.installMovementPacketFilter(bot);
 
             bot.once('spawn', () => {
@@ -94,7 +92,6 @@ class BotWrapper {
         bot._client.write = (name, params) => {
             if (name === 'position' || name === 'position_look' || name === 'look' || name === 'flying') {
                 if (!allowNextPositionPacket) {
-                    // Drop Mineflayer's idle position packets so the server never kicks us
                     return;
                 }
                 allowNextPositionPacket = false;
@@ -117,7 +114,7 @@ class BotWrapper {
         this.antiAfkTimer = setInterval(() => {
             if (!this.bot || !this.bot.entity) return;
             try {
-                // Arm swing does NOT send movement packets, so it won't trigger invalid_player_movement
+                // Arm swing does not move the bot.
                 this.bot.swingArm();
             } catch (_) {}
         }, 30000);
@@ -161,8 +158,18 @@ class BotWrapper {
     }
 }
 
-const myBot = new BotWrapper();
-myBot.start();
+// Start up to six lightweight clients with a delay between connections.
+// BOT_COUNT may reduce the number (1-6); six clients on 512 MB may still exceed the plan's memory limit.
+const parsedBotCount = Number.parseInt(process.env.BOT_COUNT || '6', 10);
+const BOT_COUNT = Number.isFinite(parsedBotCount) ? Math.min(6, Math.max(1, parsedBotCount)) : 6;
+const USERNAME_PREFIX = (process.env.BOT_USERNAME_PREFIX || 'Bot_AFK_').slice(0, 14);
+const bots = Array.from({ length: BOT_COUNT }, (_, index) =>
+    new BotWrapper({ username: `${USERNAME_PREFIX}${index + 1}` })
+);
 
-process.once('SIGINT', () => myBot.stop());
-process.once('SIGTERM', () => myBot.stop());
+bots.forEach((bot, index) => {
+    setTimeout(() => bot.start(), index * 5000);
+});
+
+process.once('SIGINT', () => bots.forEach((bot) => bot.stop()));
+process.once('SIGTERM', () => bots.forEach((bot) => bot.stop()));
