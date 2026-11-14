@@ -138,7 +138,7 @@ class BotWrapper {
 
         this.reconnectScheduled = true;
         this.reconnectAttempts += 1;
-        const delay = Math.min(Math.max(this.reconnectAttempts * 15000, 15000), 60000);
+        const delay = Math.min(Math.max(this.reconnectAttempts * 20000, 20000), 90000);
         console.log(`[${this.username}] Reconnecting in ${delay / 1000}s...`);
 
         this.reconnectTimer = setTimeout(() => {
@@ -158,17 +158,17 @@ class BotWrapper {
     }
 }
 
-// Start up to six lightweight clients with a delay between connections.
-// BOT_COUNT may reduce the number (1-6); six clients on 512 MB may still exceed the plan's memory limit.
-const parsedBotCount = Number.parseInt(process.env.BOT_COUNT || '6', 10);
-const BOT_COUNT = Number.isFinite(parsedBotCount) ? Math.min(6, Math.max(1, parsedBotCount)) : 6;
+const parsedBotCount = Number.parseInt(process.env.BOT_COUNT || '5', 10);
+const BOT_COUNT = Number.isFinite(parsedBotCount) ? Math.min(5, Math.max(1, parsedBotCount)) : 5;
 const USERNAME_PREFIX = (process.env.BOT_USERNAME_PREFIX || 'Bot_AFK_').slice(0, 14);
+const START_DELAY_MS = Number.parseInt(process.env.BOT_START_DELAY_MS || '8000', 10) || 8000;
+
 const bots = Array.from({ length: BOT_COUNT }, (_, index) =>
     new BotWrapper({ username: `${USERNAME_PREFIX}${index + 1}` })
 );
 
 bots.forEach((bot, index) => {
-    setTimeout(() => bot.start(), index * 5000);
+    setTimeout(() => bot.start(), index * START_DELAY_MS);
 });
 
 process.once('SIGINT', () => bots.forEach((bot) => bot.stop()));
